@@ -4,10 +4,8 @@ import android.content.Context
 import android.graphics.*
 
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import androidx.core.graphics.minus
 
 
 class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
@@ -32,6 +30,7 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
     //圆心 第二个
     private var p02: PointF = PointF(0F, 0F)
 
+    private var leftPriceX = 0F
     private var paintCircle: Paint
     private var paintLine: Paint
     private var paintLine2: Paint
@@ -42,24 +41,24 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
     private var gWidth = 0
 
 
-    //最大值的显示文案
-    var maxString = "100+"
     //最小值
     var minValue = 0
     //最大值
-    var maxValue = 100
+    var maxValue = 1000
 
     //最小值最初的位置
-    var minInitPosition = 8
+    var minInitPosition = 0
 
     //最大子最初的位置
-    var maxIntPosition = 91
+    var maxIntPosition = 1000
 
     //没有移动过， 为了第一次的算 标签值得时候不会出现1的误差
     var isNoMove0 = true
     var isNoMove02 = true
 
     init {
+        leftPriceX =
+            0 * (gWidth - OFFSET - OFFSET) / (maxValue - minValue + PERCENT_OFFSET) + OFFSET
         paintCircle = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.strokeWidth = strokeW
             this.style = Paint.Style.STROKE//画笔属性是空心圆
@@ -68,10 +67,10 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
         }
 
         paintLine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.strokeWidth = 4f
+            this.strokeWidth = 12f
             this.style = Paint.Style.STROKE//画笔属性是空心圆
             this.isAntiAlias = true
-            this.color = Color.parseColor("#D8D8D8")
+            this.color = Color.parseColor("#FFA22D")
             this.pathEffect = CornerPathEffect(80f);
         }
 
@@ -98,8 +97,9 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
 
         minMaxTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = Color.parseColor("#bbbbbb")
+            this.textAlign = Paint.Align.CENTER
             this.strokeWidth = 2f
-            this.textSize = 16F * 2
+            this.textSize = 16F * 3
         }
     }
 
@@ -108,16 +108,12 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
 
         //  Log.d(TAG, "onLayout  width=$width  height=$height")
         //计算一次长度
-
         gWidth = width
 
         val validLen = gWidth - OFFSET - OFFSET
-
         //算出第一次  第一个圈圈的位置
         p0.x = minInitPosition * validLen / (maxValue - minValue + PERCENT_OFFSET) + OFFSET
-
         p02.x = maxIntPosition * validLen / (maxValue - minValue + PERCENT_OFFSET) + OFFSET
-
 
         p0.y = height / 2.toFloat()
         p02.y = p0.y
@@ -125,13 +121,9 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         event ?: return true
-
         val p = PointF(event.x, event.y)
-
         when (event.action) {
-
             MotionEvent.ACTION_DOWN -> {
-
                 if (
                     p.x > p0.x - 2 * r
                     && p.x < p0.x + 2 * r
@@ -140,7 +132,6 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
                 ) {
                     isCanMoveP0 = true
                 }
-
                 if (
                     p.x > p02.x - 2 * r
                     && p.x < p02.x + 2 * r
@@ -160,7 +151,6 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
                     p.x >= OFFSET
                     && p.x <= gWidth - OFFSET
                 ) {
-
                     if (isCanMoveP0 && p.x < p02.x - 3.5 * r) {
                         p0.x = p.x
                         //p0.y = p.y
@@ -187,7 +177,13 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
     //    重写draw方法
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
-        //     Log.d(TAG, "draw  width=$width  height=$height")
+//        //把各个点连接起来
+        path.reset()
+//        //左边起点
+        path.moveTo(leftPriceX, p0.y + 5)
+        path.lineTo(gWidth - OFFSET, p0.y + 5)
+
+        canvas.drawPath(path, paintLine)
 
         //画最大最小值
         drawMinMaxText(canvas)
@@ -195,55 +191,6 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
         //画两个指示器
         drawCircleIndex(canvas, p0)
         drawCircleIndex(canvas, p02)
-
-
-        //得到指示器上平滑点
-        val p0List = calculatePonits(p0)
-        val p02List = calculatePonits(p02)
-
-        //把各个点连接起来
-        path.reset()
-        //左边起点
-        path.moveTo(0F, p0List[1].y)
-        val path2 = Path()
-
-
-        //绘制交叉点
-        if (p0List[9].x > p02List[1].x) {
-            //第三交叉点
-            val p3 = calculate3ponit(p0List[5], p02List[5], p0List[5], p0List[1].y)
-            //第一指示器
-            path.line2p(p0List[1], p0List[2], p0List[3])
-            path2.move2p(p0List[3])
-            path2.line2p(p0List[3], p0List[4], p0List[5], p3, p02List[5], p02List[6], p02List[7])
-
-            //第二指示器
-            path.move2p(p02List[7])
-            path.line2p(p02List[7], p02List[8], p02List[9])
-
-        } else {
-            //第一指示器
-            path.line2p(p0List[1], p0List[2], p0List[3])
-            path2.move2p(p0List[3])
-            path2.line2p(p0List[3], p0List[4], p0List[5], p0List[6], p0List[7])
-            path.move2p(p0List[7])
-            path.line2p(p0List[7], p0List[8], p0List[9])
-
-            //第二指示器
-            path.line2p(p02List[1], p02List[2], p02List[3])
-            path2.move2p(p02List[3])
-            path2.line2p(p02List[3], p02List[4], p02List[5], p02List[6], p02List[7])
-            path.move2p(p02List[7])
-            path.line2p(p02List[7], p02List[8], p02List[9])
-        }
-
-
-        //右边末点
-        path.line2p(PointF(width.toFloat(), p0List[1].y))
-
-        canvas.drawPath(path, paintLine)
-        canvas.drawPath(path2, paintLine2)
-
     }
 
     /**
@@ -286,7 +233,7 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
      * pR: PointF 右边点
      * pT: PointF 最高点
      */
-    private fun calculate3ponit(pL: PointF, pR: PointF, pT: PointF, offset: Float): PointF {
+    private fun calculate3point(pL: PointF, pR: PointF, pT: PointF, offset: Float): PointF {
         // val h1 = pL.y
         val dh = pT.y - offset
         val ds = 4 * r
@@ -302,12 +249,11 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
      * 画最大最小值
      */
     private fun drawMinMaxText(canvas: Canvas) {
-        canvas.drawText(minValue.toString(), OFFSET - 3 * r, p0.y, minMaxTextPaint)
-        canvas.drawText(maxString, gWidth - OFFSET + 2 * r, p0.y, minMaxTextPaint)
+        canvas.drawText("$$minValue", leftPriceX, p0.y - 60, minMaxTextPaint)
+        canvas.drawText("$$maxValue", gWidth - OFFSET, p0.y - 60, minMaxTextPaint)
     }
 
     private fun getShowText(p: PointF): String {
-
         if (isNoMove0 && p.x == p0.x) {
             return minInitPosition.toString()
         }
@@ -326,7 +272,7 @@ class DoubleCircleView(context: Context, attrs: AttributeSet?) : View(context, a
         var currentProcess =
             (currentLen * (maxValue - minValue + PERCENT_OFFSET) / validLen).toInt()
         if (currentProcess >= maxValue) {
-            return maxString
+            return "$maxValue"
         }
         return currentProcess.toString()
     }
